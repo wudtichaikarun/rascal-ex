@@ -1,3 +1,4 @@
+// @flow
 import R from 'ramda'
 
 const obj = {
@@ -6,10 +7,17 @@ const obj = {
   },
 }
 
-function sayHello() {
+function sayHello(): string {
   const message = R.path(['a', 'b'], obj)
 
-  console.log(message)
+  return message
+}
+sayHello()
+
+interface IRequest {
+  methodA(): void;
+  methodB(): void;
+  methodC(): void;
 }
 
-sayHello()
+class Request implements IRequest {}
