@@ -57,11 +57,20 @@ export async function createAmqpConnection(options: IAmqpConnectionOptions) {
     publication.on('error', console.error)
   }, 1000)
 
-  // consumer
-  const subscription = await broker.subscribe('simple_queue')
-  subscription
+  // consumer 1 worker A
+  const workerA = await broker.subscribe('simple_queue')
+  workerA
     .on('message', (message, content, ackOrNack) => {
-      console.log(content)
+      console.log(`WorkerA: ${content}`)
+      ackOrNack()
+    })
+    .on('error', console.error)
+
+  // consumer 2 worker B
+  const workerB = await broker.subscribe('simple_queue')
+  workerB
+    .on('message', (message, content, ackOrNack) => {
+      console.log(`workerB: ${content}`)
       ackOrNack()
     })
     .on('error', console.error)
