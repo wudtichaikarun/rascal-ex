@@ -61,6 +61,8 @@ export async function createAmqpConnection(options: IAmqpConnectionOptions) {
   workerA
     .on('message', (message, content, ackOrNack) => {
       console.log(`WorkerA: ${content}`)
+
+      // what is ackOrNack ?  https://www.npmjs.com/package/rascal#message-acknowledgement-and-recovery-strategies
       ackOrNack()
     })
     .on('error', console.error)
@@ -70,6 +72,7 @@ export async function createAmqpConnection(options: IAmqpConnectionOptions) {
   workerB
     .on('message', (message, content, ackOrNack) => {
       console.log(`workerB: ${content}`)
+
       ackOrNack()
     })
     .on('error', console.error)
