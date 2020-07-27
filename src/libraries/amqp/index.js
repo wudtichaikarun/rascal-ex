@@ -48,7 +48,6 @@ export async function createAmqpConnection(options: IAmqpConnectionOptions) {
 
   console.log('INIT_BROKER_SUCCESS')
 
-  // ********* 1. Simple queue ************
   // producer
   setInterval(async () => {
     const publication = await broker.publish('simple_queue', 'Hello World!', {
