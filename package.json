@@ -4,13 +4,16 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "dev": "flow && DEBUG=koa*,worker,app*  nodemon src/index.js --exec babel-node -e js",
+    "dev": "flow && DEBUG=koa*,worker,app*  nodemon src/bootstrap.js --exec babel-node -e js",
     "flow": "flow"
   },
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "ramda": "^0.27.0"
+    "amqplib": "^0.6.0",
+    "dotenv": "^8.2.0",
+    "ramda": "^0.27.0",
+    "rascal": "^10.1.0"
   },
   "devDependencies": {
     "babel-cli": "^6.26.0",

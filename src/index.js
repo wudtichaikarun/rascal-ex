@@ -1,2 +1,0 @@
-import './classMemberDecorators'
-import './classDecorators'
