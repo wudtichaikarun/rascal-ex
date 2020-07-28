@@ -26,6 +26,7 @@ function buildConfigSimpleQueue(config: IAmqpConnectionOptions) {
         publications: {
           simple_queue: {
             exchange: '',
+            // routingKey: 'simple_queue',
           },
         },
         subscriptions: {
