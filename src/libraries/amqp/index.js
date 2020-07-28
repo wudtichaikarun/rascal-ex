@@ -21,35 +21,35 @@ function buildConfig(config: IAmqpConnectionOptions) {
     vhosts: {
       config: {
         connections: mappingAmqpConfigConnection(config),
-        queues: ['demo_q', 'print_log', 'save_log'],
+        queues: ['demo_q', 'orange_animals', 'rabbits'],
         exchanges: {
-          direct_logs: {
-            type: 'direct',
+          animals_ex: {
+            type: 'topic',
           },
         },
         publications: {
           demo_q: {
-            exchange: 'direct_logs',
+            exchange: 'animals_ex',
           },
         },
         bindings: {
           b1: {
-            source: 'direct_logs',
-            destination: 'print_log',
-            bindingKeys: ['info', 'warning', 'error'],
+            source: 'animals_ex',
+            destination: 'orange_animals',
+            bindingKey: '*.orange.*',
           },
           b2: {
-            source: 'direct_logs',
-            destination: 'save_log',
-            bindingKey: 'error',
+            source: 'animals_ex',
+            destination: 'rabbits',
+            bindingKeys: ['*.*.rabbit', 'lazy.#'],
           },
         },
         subscriptions: {
-          print_log: {
-            queue: 'print_log',
+          orange_animals: {
+            queue: 'orange_animals',
           },
-          save_log: {
-            queue: 'save_log',
+          rabbits: {
+            queue: 'rabbits',
           },
         },
       },
@@ -69,26 +69,26 @@ export async function createAmqpConnection(options: IAmqpConnectionOptions) {
 
   // producer
   setInterval(async () => {
-    const logLevels = ['info', 'warning', 'error']
-    const randomLogLevel = logLevels[Math.floor(Math.random() * logLevels.length)]
-    const publication = await broker.publish('demo_q', `Log Level:${randomLogLevel}`, {
-      routingKey: randomLogLevel,
+    const routingKeys = ['quick.orange.rabbit', 'quick.orange.fox', 'lazy.brown.fox']
+    const randomRoutingKey = routingKeys[Math.floor(Math.random() * routingKeys.length)]
+    const publication = await broker.publish('demo_q', `routing key:${randomRoutingKey}`, {
+      routingKey: randomRoutingKey,
     })
     publication.on('error', console.error)
   }, 2000)
 
-  const consumerA = await broker.subscribe('print_log')
+  const consumerA = await broker.subscribe('orange_animals')
   consumerA
     .on('message', (message, content, ackOrNack) => {
-      console.log(`consumer A print log: ${content}`)
+      console.log(`Orange Animals: ${content}`)
       ackOrNack()
     })
     .on('error', console.error)
 
-  const consumerB = await broker.subscribe('save_log')
+  const consumerB = await broker.subscribe('rabbits')
   consumerB
     .on('message', (message, content, ackOrNack) => {
-      console.log(`consumer B save log: ${content}`)
+      console.log(`Rabbits: ${content}`)
       ackOrNack()
     })
     .on('error', console.error)
