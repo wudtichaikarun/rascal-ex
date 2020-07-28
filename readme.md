@@ -36,6 +36,7 @@ AMQP_PASSWORD=guest
 folders structure
 
 ```
+├── .env
 ├── package-lock.json
 ├── package.json
 ├── readme.md
