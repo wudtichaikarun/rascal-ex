@@ -21,35 +21,22 @@ function buildConfig(config: IAmqpConnectionOptions) {
     vhosts: {
       config: {
         connections: mappingAmqpConfigConnection(config),
-        queues: ['demo_q', 'print_log', 'save_log'],
-        exchanges: {
-          direct_logs: {
-            type: 'direct',
-          },
-        },
+        queues: ['rpc_queue', 'rpc_queue_reply'],
+        exchanges: [''],
         publications: {
-          demo_q: {
-            exchange: 'direct_logs',
+          rpc_queue: {
+            exchange: '',
           },
-        },
-        bindings: {
-          b1: {
-            source: 'direct_logs',
-            destination: 'print_log',
-            bindingKeys: ['info', 'warning', 'error'],
-          },
-          b2: {
-            source: 'direct_logs',
-            destination: 'save_log',
-            bindingKey: 'error',
+          rpc_queue_reply: {
+            exchange: '',
           },
         },
         subscriptions: {
-          print_log: {
-            queue: 'print_log',
+          rpc_queue: {
+            queue: 'rpc_queue',
           },
-          save_log: {
-            queue: 'save_log',
+          rpc_queue_reply: {
+            queue: 'rpc_queue_reply',
           },
         },
       },
@@ -67,29 +54,62 @@ export async function createAmqpConnection(options: IAmqpConnectionOptions) {
 
   console.log('INIT_BROKER_SUCCESS')
 
-  // producer
-  setInterval(async () => {
-    const logLevels = ['info', 'warning', 'error']
-    const randomLogLevel = logLevels[Math.floor(Math.random() * logLevels.length)]
-    const publication = await broker.publish('demo_q', `Log Level:${randomLogLevel}`, {
-      routingKey: randomLogLevel,
-    })
-    publication.on('error', console.error)
-  }, 2000)
+  // ********* Client **********
+  const correlationId = `${+new Date()}`
+  const n = 6
+  const publication = await broker.publish('rpc_queue', n, {
+    routingKey: 'rpc_queue',
+    options: {
+      replyTo: 'rpc_queue_reply',
+      correlationId,
+    },
+  })
+  console.log(`Client request What is the result of Fibonacci(${n})....`)
+  publication.on('error', console.error)
 
-  const consumerA = await broker.subscribe('print_log')
-  consumerA
+  const clientSubscriptions = await broker.subscribe('rpc_queue_reply')
+  clientSubscriptions
     .on('message', (message, content, ackOrNack) => {
-      console.log(`consumer A print log: ${content}`)
+      const { properties } = message
+      if (properties.correlationId === correlationId) {
+        console.log(`Client response Fibonacci(${n})=${content}`)
+      }
       ackOrNack()
     })
     .on('error', console.error)
 
-  const consumerB = await broker.subscribe('save_log')
-  consumerB
-    .on('message', (message, content, ackOrNack) => {
-      console.log(`consumer B save log: ${content}`)
+  //  ********* Server **********
+  const worker = await broker.subscribe('rpc_queue')
+  worker
+    .on('message', async (message, n, ackOrNack) => {
+      // process
+      console.log('Server process....')
+      const { correlationId, replyTo } = message.properties
+      const fibonacciValue = fibonacci(n)
+
+      await broker.publish(replyTo, fibonacciValue, {
+        routingKey: replyTo,
+        options: {
+          correlationId,
+        },
+      })
+      console.log('Server reply')
+
       ackOrNack()
     })
     .on('error', console.error)
+}
+
+function fibonacci(n) {
+  let _fibonacci = function (n) {
+    if (n <= 2) return 1
+    if (n in _fibonacci.cacheFib) {
+      return _fibonacci.cacheFib[n]
+    }
+    const value = _fibonacci(n - 2) + _fibonacci(n - 1)
+    _fibonacci.cacheFib[n] = value
+    return value
+  }
+  _fibonacci.cacheFib = {}
+  return _fibonacci(n)
 }
