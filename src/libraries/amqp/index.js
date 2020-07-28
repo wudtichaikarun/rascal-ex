@@ -16,21 +16,38 @@ function mappingAmqpConfigConnection(config: IAmqpConnectionOptions) {
   }))
 }
 
-function buildConfigSimpleQueue(config: IAmqpConnectionOptions) {
+function buildConfig(config: IAmqpConnectionOptions) {
   return {
     vhosts: {
       config: {
         connections: mappingAmqpConfigConnection(config),
-        exchanges: [''],
-        queues: ['simple_queue'],
+        queues: ['demo_q', 'consumer_a', 'consumer_b'],
+        exchanges: {
+          demo_pub_sub_ex: {
+            type: 'fanout',
+          },
+        },
         publications: {
-          simple_queue: {
-            exchange: '',
+          demo_q: {
+            exchange: 'demo_pub_sub_ex',
+          },
+        },
+        bindings: {
+          b1: {
+            source: 'demo_pub_sub_ex',
+            destination: 'consumer_a',
+          },
+          b2: {
+            source: 'demo_pub_sub_ex',
+            destination: 'consumer_b',
           },
         },
         subscriptions: {
-          simple_queue: {
-            queue: 'simple_queue',
+          consumer_a: {
+            queue: 'consumer_a',
+          },
+          consumer_b: {
+            queue: 'consumer_b',
           },
         },
       },
@@ -39,7 +56,7 @@ function buildConfigSimpleQueue(config: IAmqpConnectionOptions) {
 }
 
 export async function createAmqpConnection(options: IAmqpConnectionOptions) {
-  const brokerConfig = buildConfigSimpleQueue(options)
+  const brokerConfig = buildConfig(options)
 
   const broker = await Broker.create(brokerConfig)
   broker.on('error', (error) => {
@@ -50,28 +67,23 @@ export async function createAmqpConnection(options: IAmqpConnectionOptions) {
 
   // producer
   setInterval(async () => {
-    const publication = await broker.publish('simple_queue', 'Hello World!', {
-      routingKey: 'simple_queue',
-    })
+    const publication = await broker.publish('demo_q', 'Hello World!')
     publication.on('error', console.error)
   }, 1000)
 
-  // consumer 1 worker A
-  const workerA = await broker.subscribe('simple_queue')
-  workerA
+  const consumerA = await broker.subscribe('consumer_a')
+  consumerA
     .on('message', (message, content, ackOrNack) => {
-      console.log(`WorkerA: ${content}`)
+      console.log(`consumerA: ${content}`)
 
-      // what is ackOrNack ?  https://www.npmjs.com/package/rascal#message-acknowledgement-and-recovery-strategies
       ackOrNack()
     })
     .on('error', console.error)
 
-  // consumer 2 worker B
-  const workerB = await broker.subscribe('simple_queue')
-  workerB
+  const consumerB = await broker.subscribe('consumer_b')
+  consumerB
     .on('message', (message, content, ackOrNack) => {
-      console.log(`workerB: ${content}`)
+      console.log(`consumerB: ${content}`)
 
       ackOrNack()
     })
