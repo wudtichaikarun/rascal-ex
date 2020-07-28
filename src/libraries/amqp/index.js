@@ -21,33 +21,35 @@ function buildConfig(config: IAmqpConnectionOptions) {
     vhosts: {
       config: {
         connections: mappingAmqpConfigConnection(config),
-        queues: ['demo_q', 'consumer_a', 'consumer_b'],
+        queues: ['demo_q', 'print_log', 'save_log'],
         exchanges: {
-          demo_pub_sub_ex: {
-            type: 'fanout',
+          direct_logs: {
+            type: 'direct',
           },
         },
         publications: {
           demo_q: {
-            exchange: 'demo_pub_sub_ex',
+            exchange: 'direct_logs',
           },
         },
         bindings: {
           b1: {
-            source: 'demo_pub_sub_ex',
-            destination: 'consumer_a',
+            source: 'direct_logs',
+            destination: 'print_log',
+            bindingKeys: ['info', 'warning', 'error'],
           },
           b2: {
-            source: 'demo_pub_sub_ex',
-            destination: 'consumer_b',
+            source: 'direct_logs',
+            destination: 'save_log',
+            bindingKey: 'error',
           },
         },
         subscriptions: {
-          consumer_a: {
-            queue: 'consumer_a',
+          print_log: {
+            queue: 'print_log',
           },
-          consumer_b: {
-            queue: 'consumer_b',
+          save_log: {
+            queue: 'save_log',
           },
         },
       },
@@ -67,24 +69,26 @@ export async function createAmqpConnection(options: IAmqpConnectionOptions) {
 
   // producer
   setInterval(async () => {
-    const publication = await broker.publish('demo_q', 'Hello World!')
+    const logLevels = ['info', 'warning', 'error']
+    const randomLogLevel = logLevels[Math.floor(Math.random() * logLevels.length)]
+    const publication = await broker.publish('demo_q', `Log Level:${randomLogLevel}`, {
+      routingKey: randomLogLevel,
+    })
     publication.on('error', console.error)
-  }, 1000)
+  }, 2000)
 
-  const consumerA = await broker.subscribe('consumer_a')
+  const consumerA = await broker.subscribe('print_log')
   consumerA
     .on('message', (message, content, ackOrNack) => {
-      console.log(`consumerA: ${content}`)
-
+      console.log(`consumer A print log: ${content}`)
       ackOrNack()
     })
     .on('error', console.error)
 
-  const consumerB = await broker.subscribe('consumer_b')
+  const consumerB = await broker.subscribe('save_log')
   consumerB
     .on('message', (message, content, ackOrNack) => {
-      console.log(`consumerB: ${content}`)
-
+      console.log(`consumer B save log: ${content}`)
       ackOrNack()
     })
     .on('error', console.error)
